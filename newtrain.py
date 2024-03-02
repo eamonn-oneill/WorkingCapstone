@@ -1,24 +1,17 @@
-import cv2
 import sys
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten
-from tensorflow.keras.applications import VGG16
-from tensorflow.keras.layers import Input
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import Model
+import tensorflow
+Sequential = tensorflow.keras.models.Sequential
 
+Dense = tensorflow.keras.layers.Dense
+Flatten = tensorflow.keras.layers.Flatten
+Dropout = tensorflow.keras.layers.Dropout
+Conv2D = tensorflow.keras.layers.Conv2D
+MaxPooling2D = tensorflow.keras.layers.MaxPooling2D
+BatchNormalization = tensorflow.keras.layers.BatchNormalization
 
+EarlyStopping = tensorflow.keras.callbacks.EarlyStopping
+Adam = tensorflow.keras.optimizers.Adam
 
-import numpy as np
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Flatten, Dropout, Input
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, BatchNormalization
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.optimizers import Adam
-
-from time import sleep
 # Load the images and corresponding labels
 def makemodel(images,labels,epoch,batch,filelog,val_split):
     print("\n")
@@ -42,7 +35,7 @@ def makemodel(images,labels,epoch,batch,filelog,val_split):
 
     early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     filename=filelog+".csv"
-    history_logger=tf.keras.callbacks.CSVLogger(filename, separator=",", append=True)
+    history_logger=tensorflow.keras.callbacks.CSVLogger(filename, separator=",", append=True)
 
     # Train the model
     model.fit(images, labels, epochs=epoch, batch_size=batch,
