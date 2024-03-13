@@ -28,7 +28,7 @@ def resize_images(input_folder, output_folder, target_size):
 
 if __name__ == "__main__":
     # Set the path to your original images folder
-    input_folder = "/home/eamonn/Capstone/DronePhotos"
+    input_folder = "/home/eamonn/Capstone/photos"
 
     # Set the path to the output folder for resized images
     output_folder = "/home/eamonn/Capstone/resized"

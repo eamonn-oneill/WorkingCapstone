@@ -1,9 +1,12 @@
 import tensorflow as tf
 import cv2
 import numpy as np
+import keras
 from time import sleep
+
 # Load the saved model
-model = tf.keras.models.load_model('15e32b3v.h5')
+model = keras.models.load_model('15e32b3v.h5')
+
 
 # Define the function to predict bounding boxes
 def predict_bounding_boxes(image_path):
@@ -35,10 +38,11 @@ def predict_bounding_boxes(image_path):
     cv2.imshow("Image", image)
     cv2.waitKey(10)
 
-# Test the function with a sample image
-num_images = 60  # Assuming you have 55 images from IMG_7402 to IMG_7456
-image_folder = "DronePhotos"
 
-for i in range(7397, 7457):  # Assuming the images start from IMG_7402
-    image_path = "IMG_{}.jpg".format(i)
+# Test the function with a sample image
+num_images = 500  # Assuming you have 55 images from IMG_7402 to IMG_7456
+image_folder = "photos"
+
+for i in range(0, 499):  # Assuming the images start from IMG_7402
+    image_path = "photos_{}.jpg".format(i)
     predict_bounding_boxes(image_path)
