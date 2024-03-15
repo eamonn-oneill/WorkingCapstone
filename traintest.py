@@ -5,7 +5,7 @@ import keras
 from time import sleep
 
 # Load the saved model
-model = keras.models.load_model('15e32b3v.h5')
+model = keras.models.load_model('5e32b1v.h5')
 
 
 # Define the function to predict bounding boxes
@@ -19,7 +19,7 @@ def predict_bounding_boxes(image_path):
     gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
 
     # Reshape
-    reshaped = np.reshape(gray, (1, 432, 576, 1))
+    reshaped = np.reshape(gray, (1, 576, 432, 1))
 
     # Predict the bounding box using the model
     prediction = model.predict(reshaped)
@@ -40,9 +40,9 @@ def predict_bounding_boxes(image_path):
 
 
 # Test the function with a sample image
-num_images = 500  # Assuming you have 55 images from IMG_7402 to IMG_7456
+num_images = 1730  # Assuming you have 55 images from IMG_7402 to IMG_7456
 image_folder = "photos"
 
-for i in range(0, 499):  # Assuming the images start from IMG_7402
+for i in range(0, 1730):  # Assuming the images start from IMG_7402
     image_path = "photos_{}.jpg".format(i)
     predict_bounding_boxes(image_path)

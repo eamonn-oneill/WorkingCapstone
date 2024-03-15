@@ -21,7 +21,7 @@ np.set_printoptions(threshold=sys.maxsize)
 print("Model Testing")
 print("Prepping images and labels")
 
-num_images = 500
+num_images = 1730
 images = []
 labels = []
 all_images = []
@@ -65,15 +65,15 @@ for i in range(num_images):
     images.append(gray)
 
     # Display the images every 25th iteration
-    if (i + 1) % 25 == 0:
-        cv2.imshow("Original Image", image)
-        cv2.imshow("Grayscale Image", gray)
-        cv2.imshow("Edges Detected", edges)
-        cv2.imshow("Dilated Edges", dilated)
-        contour_image = image.copy()
-        cv2.drawContours(contour_image, contours, -1, (0, 255, 0), 2)
-        cv2.imshow("Contours", contour_image)
-        cv2.waitKey(0)
+    # if (i + 1) % 25 == 0:
+    #     cv2.imshow("Original Image", image)
+    #     cv2.imshow("Grayscale Image", gray)
+    #     cv2.imshow("Edges Detected", edges)
+    #     cv2.imshow("Dilated Edges", dilated)
+    #     contour_image = image.copy()
+    #     cv2.drawContours(contour_image, contours, -1, (0, 255, 0), 2)
+    #     cv2.imshow("Contours", contour_image)
+    #     cv2.waitKey(0)
 
 images = np.array(images)
 images = np.reshape(images, (images.shape[0], images.shape[1], images.shape[2], 1))

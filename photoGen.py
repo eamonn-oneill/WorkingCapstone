@@ -11,7 +11,7 @@ tello.get_battery()
 keepStreaming = True
 tello.streamon()
 
-photo_count = 0  # Variable to keep track of the number of photos taken
+photo_count = 800  # Variable to keep track of the number of photos taken
 output_dir = "photos"  # Directory to store the photos
 
 if not os.path.exists(output_dir):
