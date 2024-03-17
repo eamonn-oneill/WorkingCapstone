@@ -1,10 +1,15 @@
 import sys
 import tensorflow as tf
-import keras
 import cv2
 import numpy as np
 from newtrain import makemodel
-
+import itertools
+from datetime import datetime
+import keras
+from keras.callbacks import TensorBoard
+from keras import layers
+from keras import optimizers
+from keras import models
 Sequential = keras.models.Sequential
 Dense = keras.layers.Dense
 Flatten = keras.layers.Flatten
@@ -14,7 +19,7 @@ MaxPooling2D = keras.layers.MaxPooling2D
 BatchNormalization = keras.layers.BatchNormalization
 EarlyStopping = keras.callbacks.EarlyStopping
 Adam = keras.optimizers.Adam
-
+print(tf.config.list_physical_devices('GPU'))
 # Load the images and corresponding labels
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -64,17 +69,6 @@ for i in range(num_images):
     # Append the grayscale image to the images list
     images.append(gray)
 
-    # Display the images every 25th iteration
-    # if (i + 1) % 25 == 0:
-    #     cv2.imshow("Original Image", image)
-    #     cv2.imshow("Grayscale Image", gray)
-    #     cv2.imshow("Edges Detected", edges)
-    #     cv2.imshow("Dilated Edges", dilated)
-    #     contour_image = image.copy()
-    #     cv2.drawContours(contour_image, contours, -1, (0, 255, 0), 2)
-    #     cv2.imshow("Contours", contour_image)
-    #     cv2.waitKey(0)
-
 images = np.array(images)
 images = np.reshape(images, (images.shape[0], images.shape[1], images.shape[2], 1))
 labels = np.array(labels)
@@ -90,9 +84,23 @@ if gpus:
 
 ####################
 
-batch = 32
+# Define options
+batch_sizes = [32]
+epochs = [5]
+val_splits = [0.1]
 
-epoch = 5
-test = "5e32b1v"
-val_split = 0.1  # Adjust validation split as needed
-makemodel(images, labels, epoch, batch, test, val_split)
+# Set up TensorBoard log directory
+log_dir = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+
+# Loop through all combinations
+for batch_size, epoch, val_split in itertools.product(batch_sizes, epochs, val_splits):
+    test = f"{epoch}e{batch_size}b{int(val_split * 10)}v"
+    print(f"Testing with batch={batch_size}, epoch={epoch}, val_split={val_split}")
+
+    # Create TensorBoard callback
+    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir)
+
+    # Train the model with TensorBoard callback
+    makemodel(images, labels, epoch, batch_size, test, val_split, tensorboard_callback)

@@ -26,38 +26,27 @@ def predict_bounding_boxes(image, model):
 def move_drone(center_x, image_center_x):
     # Define a tolerance range for the center deviation
     tolerance = 20
-
     # Ensure center_x is an integer
     center_x = int(center_x)
-
     # Calculate the deviation from the image center
     deviation = center_x - image_center_x
-
     # Define a sensitivity factor to adjust the movement responsiveness
     sensitivity = 0.1  # Adjust as needed
-
     # Calculate the speed adjustment based on deviation and sensitivity
     speed_adjustment = int(deviation * sensitivity)
-
     # Move the drone forward with adjusted speed
     tello.move_forward(1 + speed_adjustment)  # Adjust speed as needed
-
 # Define a function to perform actions based on detected objects
-
 # Initialize Tello drone
 tello = Tello()
 tello.connect()
 tello.get_battery()
 keepStreaming = True
 tello.streamon()
-
 # Takeoff
 tello.takeoff()
-
-
 # Load the saved model
-model = keras.models.load_model('30e32b1v.h5')
-
+model = keras.models.load_model('15e8b1v.h5')
 # Function to stream video from Tello and perform inference
 def videoStreamer():
     while keepStreaming:
