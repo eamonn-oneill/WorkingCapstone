@@ -6,9 +6,20 @@ import tensorflow as tf
 from keras.applications import VGG16
 from keras.models import Sequential
 from keras.layers import Dense, Flatten, Dropout
-from keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint
+from keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint, TensorBoard
 import random
 import keras
+
+import time
+import datetime
+
+print(tf.config.list_physical_devices('GPU'))
+
+# Add GPU memory growth option
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
 
 # Function to resize images
 def resize_images(input_folder, output_folder, target_size):
@@ -60,7 +71,6 @@ def augment_images(input_folder, output_folder, target_size, num_augmented_per_i
             print(f"Error processing image: {img_path}")
             print(f"Error details: {e}")
 
-
 def augment_image(image, target_size):
     # Horizontal flip
     if random.random() > 0.5:
@@ -94,7 +104,7 @@ def train_model(images, labels, epoch, batch, filelog, val_split):
     model = Sequential([
         base_model,
         Flatten(),
-        Dense(256, activation='relu'),
+        Dense(128, activation='relu'),  # Reduced units
         Dropout(0.5),
         Dense(4, activation='linear')  # 4 outputs for x, y, w, and h
     ])
@@ -115,13 +125,14 @@ def train_model(images, labels, epoch, batch, filelog, val_split):
 
     # Learning rate scheduler callback
     def lr_scheduler(epoch, lr):
-        if epoch < 5:
+        if epoch < 10:
             return lr
         else:
             return lr * tf.math.exp(-0.1)
 
     lr_callback = keras.callbacks.LearningRateScheduler(lr_scheduler)
-
+    log_dir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
     # Train the model
     history = model.fit(images, labels, epochs=epoch, batch_size=batch, validation_split=val_split,
                         callbacks=[early_stop, model_checkpoint, history_logger, lr_callback])
@@ -157,14 +168,14 @@ if __name__ == "__main__":
     input_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/photos"
     output_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized/"
     augmented_output_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/augmented/"
-    target_size = (576, 432)
-    num_images = 1730
+    target_size = (576, 432)  # Decreased size
+    num_images = 1000
     image_folder = "resized"
-    epoch = 5
-    batch = 32
+    epoch = 15
+    batch = 8  # Reduced batch size
     val_split = 0.1
-    filelog = "5e32b1v"  # Update accordingly
-    num_augmented_per_image = 3  # Number of augmented images to generate per original image
+    filelog = "15e8b1v"  # Update accordingly
+    num_augmented_per_image = 1  # Number of augmented images to generate per original image
 
     try:
         # Resize images
@@ -264,9 +275,3 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"An error occurred: {e}")
-
-# Add GPU memory growth option
-gpus = tf.config.experimental.list_physical_devices('GPU')
-if gpus:
-    for gpu in gpus:
-        tf.config.experimental.set_memory_growth(gpu, True)

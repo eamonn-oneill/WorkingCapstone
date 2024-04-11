@@ -47,7 +47,7 @@ if __name__ == "__main__":
     output_folder = "/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized"
 
     # Set the target size for resizing
-    target_size = (576, 432)  # Replace with your desired size
+    target_size = (224, 224)  # Replace with your desired size
 
     # Call the function to resize images
     resize_images(input_folder, output_folder, target_size)

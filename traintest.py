@@ -38,6 +38,8 @@ def predict_bounding_boxes(image_path):
     cv2.imshow("Image", image)
     cv2.waitKey(10)
 
-for i in range(1, 1731):
+for i in range(1, 1769):
     image_path = "resized/photo_{}.jpg".format(i)  # Adjust the image path to point to the "resized" directory
+    predict_bounding_boxes(image_path)
+    image_path = "augmented/photo_{}_0.jpg".format(i)  # Adjust the image path to point to the "resized" directory
     predict_bounding_boxes(image_path)

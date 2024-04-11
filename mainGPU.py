@@ -37,7 +37,7 @@ np.set_printoptions(threshold=sys.maxsize)
 print("Model Testing")
 print("Prepping images and labels")
 
-num_images = 1000
+num_images = 1730
 images = []
 labels = []
 
@@ -66,7 +66,7 @@ for i in range(num_images):
     img = cv2.imread(image_path)
     if img is None:
         raise Exception(f"Failed to read image: {image_path}")
-
+    img = cv2.resize(img,(224,224))
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 100, 200)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -108,7 +108,7 @@ for file in os.listdir(augmented_output_folder):
     if img is None:
         raise Exception(f"Failed to read image: {image_path}")
 
-    augmented_img = augment_image(img, (576, 432))
+    augmented_img = augment_image(img, (224, 224))
     gray = cv2.cvtColor(augmented_img, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 100, 200)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -154,9 +154,9 @@ assert images.shape[0] == labels.shape[0], "Number of samples in images and labe
 ####################
 
 # Define options
-batch_sizes = [16]
-epochs = [10]
-val_splits = [0.1]
+batch_sizes = [8,16,32]
+epochs = [5,10,15]
+val_splits = [0.1,0.2,0.3]
 
 # Set up TensorBoard log directory
 log_dir = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")

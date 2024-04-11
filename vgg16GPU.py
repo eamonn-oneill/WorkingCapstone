@@ -1,3 +1,4 @@
+import itertools
 import os
 import cv2
 import numpy as np
@@ -5,141 +6,57 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from keras.applications import VGG16
 from keras.models import Sequential
-from keras.layers import Dense, Flatten, Dropout
+from keras.layers import Dense, Flatten, Dropout, BatchNormalization
 from keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint
-import random
-import keras
+from keras.preprocessing.image import ImageDataGenerator
+from sklearn.metrics import precision_score, recall_score, f1_score
 
-print(tf.config.list_physical_devices('GPU'))
-
-# Add GPU memory growth option
+# Check available physical GPUs and memory growth
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
 
-# Function to resize images
-def resize_images(input_folder, output_folder, target_size):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+def train_model(images, labels, epochs, batches, val_splits):
+    for epoch, batch, val_split in itertools.product(epochs, batches, val_splits):
+        filelog = f"{epoch}e{batch}b{int(val_split * 10)}v"
+        print("\nStarting test: " + filelog)
+        base_model = VGG16(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+        base_model.trainable = False
 
-    files = os.listdir(input_folder)
-    for file in files:
-        img_path = os.path.join(input_folder, file)
-        output_path = os.path.join(output_folder, file)
-        try:
-            # Check if the output folder already contains the resized image
-            if os.path.exists(output_path):
-                continue
+        model = Sequential([
+            tf.keras.layers.experimental.preprocessing.Rescaling(1./255, input_shape=(224, 224, 3)),
+            base_model,
+            Flatten(),
+            BatchNormalization(),
+            Dense(128, activation='relu'),
+            Dropout(0.5),
+            BatchNormalization(),
+            Dense(4, activation='linear')
+        ])
 
-            img = cv2.imread(img_path)
-            if img is None:
-                raise Exception("Failed to read image")
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=0.001,
+            decay_steps=10000,
+            decay_rate=0.9)
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule),
+                      loss='mean_squared_error',
+                      metrics=['accuracy'])
 
-            resized_img = cv2.resize(img, target_size)
-            cv2.imwrite(output_path, resized_img)
-        except Exception as e:
-            print(f"Error processing image: {img_path}")
-            print(f"Error details: {e}")
+        early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+        checkpoint_path = f"{filelog}_best_model.keras"
+        model_checkpoint = ModelCheckpoint(checkpoint_path, monitor='val_loss', save_best_only=True, mode='min')
+        filename = filelog + ".csv"
+        history_logger = CSVLogger(filename, separator=",", append=True)
 
-# Function to augment images
-def augment_images(input_folder, output_folder, target_size, num_augmented_per_image):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+        history = model.fit(images, labels, epochs=epoch, batch_size=batch, validation_split=val_split,
+                            callbacks=[early_stop, model_checkpoint, history_logger])
+        model.save(filelog + '.keras')
+        print("Finished test: " + filelog)
+        plot_training_history(history, filelog)
+        # Clear GPU memory
+        tf.keras.backend.clear_session()
 
-    files = os.listdir(input_folder)
-    for file in files:
-        img_path = os.path.join(input_folder, file)
-        try:
-            # Check if the output folder already contains the expected number of augmented images for this input image
-            existing_augmented_images = [name for name in os.listdir(output_folder) if name.startswith(file.split('.')[0])]
-            if len(existing_augmented_images) >= num_augmented_per_image:
-                continue
-
-            img = cv2.imread(img_path)
-            if img is None:
-                raise Exception("Failed to read image")
-
-            for i in range(num_augmented_per_image - len(existing_augmented_images)):
-                augmented_img = augment_image(img, target_size)
-                output_path = os.path.join(output_folder, f"{file.split('.')[0]}_{i + len(existing_augmented_images)}.jpg")
-                cv2.imwrite(output_path, augmented_img)
-        except Exception as e:
-            print(f"Error processing image: {img_path}")
-            print(f"Error details: {e}")
-
-def augment_image(image, target_size):
-    # Horizontal flip
-    if random.random() > 0.5:
-        image = cv2.flip(image, 1)
-
-    # Zooming out and rotation (randomly applied)
-    if random.random() > 0.5:
-        scale_factor = random.uniform(0.7, 1.3)  # Adjust the range for zooming out
-        angle = random.uniform(-10, 10)  # Adjust the range for rotation
-        center = (image.shape[1] // 2, image.shape[0] // 2)
-        rotation_matrix = cv2.getRotationMatrix2D(center, angle, scale_factor)
-        image = cv2.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]), flags=cv2.INTER_LINEAR)
-
-    # Resize to target size
-    augmented_image = cv2.resize(image, target_size)
-
-    return augmented_image
-
-# Function to create and train the VGG16-based model
-def train_model(images, labels, epoch, batch, filelog, val_split):
-    print("\n")
-    print("Starting test: " + filelog)
-
-    # Load pre-trained VGG16 model
-    base_model = VGG16(weights='imagenet', include_top=False, input_shape=(432, 576, 3))
-
-    # Freeze VGG16 layers
-    base_model.trainable = False
-
-    # Create model
-    model = Sequential([
-        base_model,
-        Flatten(),
-        Dense(128, activation='relu'),  # Reduced units
-        Dropout(0.5),
-        Dense(4, activation='linear')  # 4 outputs for x, y, w, and h
-    ])
-
-    # Compile model
-    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
-
-    # Early stopping callback
-    early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-
-    # Model checkpoint callback
-    checkpoint_path = f"{filelog}_best_model.keras"
-    model_checkpoint = ModelCheckpoint(checkpoint_path, monitor='val_loss', save_best_only=True, mode='min')
-
-    # CSV logger callback
-    filename = filelog + "vgg16"+ ".csv"
-    history_logger = CSVLogger(filename, separator=",", append=True)
-
-    # Learning rate scheduler callback
-    def lr_scheduler(epoch, lr):
-        if epoch < 5:
-            return lr
-        else:
-            return lr * tf.math.exp(-0.1)
-
-    lr_callback = keras.callbacks.LearningRateScheduler(lr_scheduler)
-
-    # Train the model
-    history = model.fit(images, labels, epochs=epoch, batch_size=batch, validation_split=val_split,
-                        callbacks=[early_stop, model_checkpoint, history_logger, lr_callback])
-
-    # Save the trained model
-    model.save(filelog + "vgg16" + '.keras')
-    print("Finished test: " + filelog)
-
-    return history
-
-# Function to plot training history
 def plot_training_history(history, file_prefix):
     plt.figure(figsize=(10, 6))
     plt.plot(history.history['accuracy'], label='Training Accuracy')
@@ -160,35 +77,24 @@ def plot_training_history(history, file_prefix):
     plt.savefig(f'{file_prefix}_loss.png')
 
 if __name__ == "__main__":
-    # Set paths and parameters
-    input_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/photos"
-    output_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized/"
-    augmented_output_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/augmented/"
-    target_size = (288, 216)  # Decreased size
-    num_images = 600
-    image_folder = "resized"
-    epoch = 15
-    batch = 8  # Reduced batch size
-    val_split = 0.1
-    filelog = "15e8b1v"  # Update accordingly
-    num_augmented_per_image = 2  # Number of augmented images to generate per original image
+    input_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized/"
+    target_size = (224, 224)
+    num_images = 1730
+    epochs = [15]  # List of epochs for each test
+    batches = [8,16,32]  # List of batch sizes for each test
+    val_splits = [0.1,0.2, 0.3]  # List of validation splits for each test
+    # Initialize an empty list to store test names
+    filelogs = []
+    num_augmented_per_image = 2
 
     try:
-        # Resize images
-        resize_images(input_folder, output_folder, target_size)
-
-        # Augment images
-        augment_images(output_folder, augmented_output_folder, target_size, num_augmented_per_image)
-
-        # Load resized images and labels
         images = []
         labels = []
         for i in range(num_images):
-            image_path = f"{output_folder}photo_{i + 1}.jpg"
+            image_path = os.path.join(input_folder, f"photo_{i + 1}.jpg")
             img = cv2.imread(image_path)
             if img is None:
                 raise Exception(f"Failed to read image: {image_path}")
-
             edges = cv2.Canny(img, 100, 200)
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
             dilated = cv2.dilate(edges, kernel)
@@ -219,55 +125,63 @@ if __name__ == "__main__":
             else:
                 labels.append(np.array([-1, -1, -1, -1]))
 
-            images.append(img)  # Append original image
-
-        # Load augmented images and labels
-        for file in os.listdir(augmented_output_folder):
-            image_path = os.path.join(augmented_output_folder, file)
-            img = cv2.imread(image_path)
-            if img is None:
-                raise Exception(f"Failed to read image: {image_path}")
-
-            edges = cv2.Canny(img, 100, 200)
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-            dilated = cv2.dilate(edges, kernel)
-            contours, hierarchy = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            longest_contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
-            is_closed = False
-            total = []
-            rectangles = []
-            if len(longest_contours) >= 2:
-                for contour in longest_contours:
-                    x, y, w, h = cv2.boundingRect(contour)
-                    rectangles.append((x, y, w, h))
-
-                if rectangles:
-                    x1, y1, w1, h1 = rectangles[0]
-                    x2, y2, w2, h2 = rectangles[1]
-
-                x = min(x1, x2)
-                y = min(y1, y2)
-                w = max(x1 + w1, x2 + w2) - x
-                h = max(y1 + h1, y2 + h2) - y
-
-                labels.append(np.array([x, y, w, h]))
-            elif len(longest_contours) == 1:
-                for contour in longest_contours:
-                    x, y, w, h = cv2.boundingRect(contour)
-                    labels.append(np.array([x, y, w, h]))
-            else:
-                labels.append(np.array([-1, -1, -1, -1]))
-
-            images.append(img)  # Append augmented image
+            images.append(img)
 
         images = np.array(images)
         labels = np.array(labels)
 
-        # Train model
-        history = train_model(images, labels, epoch, batch, filelog, val_split)
+        datagen = ImageDataGenerator(
+            rotation_range=10,
+            width_shift_range=0.1,
+            height_shift_range=0.1,
+            horizontal_flip=True,
+        )
 
-        # Plot training history
-        plot_training_history(history, filelog)
+        augmented_images = []
+        augmented_labels = []
+
+        # Generate augmented images and labels
+        for i in range(num_images):
+            img = images[i]
+            img_batch = np.expand_dims(img, axis=0)
+            for j in range(num_augmented_per_image):
+                augmented_img = datagen.flow(img_batch, batch_size=1, shuffle=False).next()[0].astype(np.uint8)
+                augmented_edges = cv2.Canny(augmented_img, 100, 200)
+                augmented_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+                augmented_dilated = cv2.dilate(augmented_edges, augmented_kernel)
+                augmented_contours, _ = cv2.findContours(augmented_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                augmented_longest_contours = sorted(augmented_contours, key=cv2.contourArea, reverse=True)[:2]
+                if len(augmented_longest_contours) >= 2:
+                    augmented_rectangles = []
+                    for contour in augmented_longest_contours:
+                        x, y, w, h = cv2.boundingRect(contour)
+                        augmented_rectangles.append((x, y, w, h))
+                    if augmented_rectangles:
+                        x1, y1, w1, h1 = augmented_rectangles[0]
+                        x2, y2, w2, h2 = augmented_rectangles[1]
+                        x = min(x1, x2)
+                        y = min(y1, y2)
+                        w = max(x1 + w1, x2 + w2) - x
+                        h = max(y1 + h1, y2 + h2) - y
+                        augmented_labels.append(np.array([x, y, w, h]))
+                    else:
+                        augmented_labels.append(np.array([-1, -1, -1, -1]))
+                elif len(augmented_longest_contours) == 1:
+                    for contour in augmented_longest_contours:
+                        x, y, w, h = cv2.boundingRect(contour)
+                        augmented_labels.append(np.array([x, y, w, h]))
+                else:
+                    augmented_labels.append(np.array([-1, -1, -1, -1]))
+
+                augmented_images.append(augmented_img)
+
+        augmented_images = np.array(augmented_images)
+        augmented_labels = np.array(augmented_labels)
+
+        all_images = np.concatenate((images, augmented_images), axis=0)
+        all_labels = np.concatenate((labels, augmented_labels), axis=0)
+
+        train_model(all_images, all_labels, epochs, batches, val_splits)
 
     except Exception as e:
         print(f"An error occurred: {e}")

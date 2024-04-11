@@ -20,7 +20,7 @@ def makemodel(images, labels, epoch, batch, filelog, val_split, tensorboard_call
     print("\n")
     print("Starting test: " + filelog)
     model = Sequential()
-    model.add(Input(shape=(432, 576, 1)))
+    model.add(Input(shape=(224, 224, 1)))
     model.add(Conv2D(32, (3, 3), activation='relu'))
     model.add(BatchNormalization())
     model.add(MaxPooling2D((2, 2)))
