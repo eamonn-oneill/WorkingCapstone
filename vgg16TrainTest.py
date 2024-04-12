@@ -4,7 +4,7 @@ import keras
 import os
 
 # Load the saved model
-model = keras.models.load_model('5e_16b_20v.h5')
+model = keras.models.load_model('5e16b2v.keras')
 
 def predict_bounding_boxes(image_path, output_folder):
     image = cv2.imread(image_path)
@@ -13,8 +13,7 @@ def predict_bounding_boxes(image_path, output_folder):
         return
 
     resized = cv2.resize(image, (224, 224))
-    gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-    reshaped = np.reshape(gray, (1, 224, 224, 1))  # Reshape the resized image
+    reshaped = np.reshape(resized, (1, 224, 224, 3))  # Reshape the resized image
 
     prediction = model.predict(reshaped)
     x, y, w, h = map(int, prediction[0])
@@ -30,7 +29,7 @@ def predict_bounding_boxes(image_path, output_folder):
     cv2.imwrite(output_image_path, resized)
 
 # Set the output folder
-output_folder = 'maintestimages'
+output_folder = 'vgg16testimages'
 
 for i in range(1, 1730):
     image_path = f"resized/photo_{i}.jpg"
