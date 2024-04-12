@@ -80,12 +80,12 @@ if __name__ == "__main__":
     input_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized/"
     target_size = (224, 224)
     num_images = 1730
-    epochs = [15]  # List of epochs for each test
-    batches = [8,16,32]  # List of batch sizes for each test
+    epochs = [10]  #5,10,15 List of epochs for each test
+    batches = [8]  # 8,16,32List of batch sizes for each test
     val_splits = [0.1,0.2, 0.3]  # List of validation splits for each test
     # Initialize an empty list to store test names
     filelogs = []
-    num_augmented_per_image = 2
+    num_augmented_per_image = 5
 
     try:
         images = []

@@ -1,183 +1,102 @@
-import sys
-import tensorflow as tf
-import cv2
 import numpy as np
-from newtrain import makemodel
+import cv2
+import os
 import itertools
 from datetime import datetime
-import keras
-from keras.callbacks import TensorBoard
-from keras import layers
-from keras import optimizers
-from keras import models
-import random
-import os
-import subprocess
+import tensorflow as tf
+from keras.preprocessing.image import ImageDataGenerator
+from newtrain import makemodel  # Ensure this function is compatible
 
-Sequential = keras.models.Sequential
-Dense = keras.layers.Dense
-Flatten = keras.layers.Flatten
-Dropout = keras.layers.Dropout
-Conv2D = keras.layers.Conv2D
-MaxPooling2D = keras.layers.MaxPooling2D
-BatchNormalization = keras.layers.BatchNormalization
-EarlyStopping = keras.callbacks.EarlyStopping
-Adam = keras.optimizers.Adam
+# Function to process images, extract edges, and generate labels based on contours
+def process_and_label_image(image):
+    # Edge detection and contour finding
+    edges = cv2.Canny(image, 100, 200)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    dilated = cv2.dilate(edges, kernel)
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-print(tf.config.list_physical_devices('GPU'))
-# Add GPU memory growth option
+    # Label extraction based on contours
+    longest_contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
+    rectangles = [cv2.boundingRect(c) for c in longest_contours]
+    if len(rectangles) >= 2:
+        x1, y1, w1, h1, x2, y2, w2, h2 = *rectangles[0], *rectangles[1]
+        label = np.array([min(x1, x2), min(y1, y2), max(x1 + w1, x2 + w2) - min(x1, x2), max(y1 + h1, y2 + h2) - min(y1, y2)])
+    elif rectangles:
+        label = np.array(rectangles[0])
+    else:
+        label = np.array([-1, -1, -1, -1])
+
+    return label
+
+# Configure GPU settings
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
-    for gpu in gpus:
-        tf.config.experimental.set_memory_growth(gpu, True)
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
 
-# Load the images and corresponding labels
-np.set_printoptions(threshold=sys.maxsize)
+input_folder = 'C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized'  # Update this path
+num_images = 1730  # Update according to your dataset
+num_augmented_per_image = 5  # Define the number of augmented images per original image
 
-print("Model Testing")
-print("Prepping images and labels")
-
-num_images = 1730
 images = []
 labels = []
 
-# Function to augment images
-def augment_image(image, target_size):
-    # Horizontal flip
-    if random.random() > 0.5:
-        image = cv2.flip(image, 1)
-
-    # Zooming out and rotation (randomly applied)
-    if random.random() > 0.5:
-        scale_factor = random.uniform(0.7, 1.3)  # Adjust the range for zooming out
-        angle = random.uniform(-10, 10)  # Adjust the range for rotation
-        center = (image.shape[1] // 2, image.shape[0] // 2)
-        rotation_matrix = cv2.getRotationMatrix2D(center, angle, scale_factor)
-        image = cv2.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]), flags=cv2.INTER_LINEAR)
-
-    # Resize to target size
-    augmented_image = cv2.resize(image, target_size)
-
-    return augmented_image
-
-# Load original images
+# Process original images
 for i in range(num_images):
-    image_path = f"resized/photo_{i + 1}.jpg"
-    img = cv2.imread(image_path)
+    image_path = os.path.join(input_folder, f"photo_{i + 1}.jpg")
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         raise Exception(f"Failed to read image: {image_path}")
-    img = cv2.resize(img,(224,224))
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray, 100, 200)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    dilated = cv2.dilate(edges, kernel)
-    contours, hierarchy = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    longest_contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
-    is_closed = False
-    total = []
-    rectangles = []
-    if len(longest_contours) >= 2:
-        for contour in longest_contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            rectangles.append((x, y, w, h))
+    img = cv2.resize(img, (224, 224))
 
-        if rectangles:
-            x1, y1, w1, h1 = rectangles[0]
-            x2, y2, w2, h2 = rectangles[1]
+    label = process_and_label_image(img)
+    images.append(img[..., np.newaxis])  # Add channel dimension
+    labels.append(label)
 
-        x = min(x1, x2)
-        y = min(y1, y2)
-        w = max(x1 + w1, x2 + w2) - x
-        h = max(y1 + h1, y2 + h2) - y
+images = np.array(images, dtype=np.float32) / 255.0  # Normalize images
+labels = np.array(labels, dtype=np.float32)
 
-        labels.append(np.array([x, y, w, h]))
-    elif len(longest_contours) == 1:
-        for contour in longest_contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            labels.append(np.array([x, y, w, h]))
-    else:
-        labels.append(np.array([-1, -1, -1, -1]))
+# Data augmentation setup
+datagen = ImageDataGenerator(
+    rotation_range=10,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    horizontal_flip=True
+)
 
-    images.append(gray)
+# Apply augmentation and reapply label logic to augmented images
+augmented_images = []
+augmented_labels = []
+total_augmented = 0  # Initialize a counter for augmented images
+for img in images:
+    img_batch = np.expand_dims(img, axis=0)  # Add batch dimension
+    for _ in range(num_augmented_per_image):
+        aug_img = datagen.flow(img_batch, batch_size=1).next()[0]
+        aug_img_uint8 = (aug_img * 255).astype(np.uint8)  # Convert back to uint8
+        aug_label = process_and_label_image(aug_img_uint8[:, :, 0])  # Reapply label extraction to augmented image
+        augmented_images.append(aug_img)
+        augmented_labels.append(aug_label)
+        total_augmented += 1  # Increment the counter
 
-# Load augmented images
-augmented_output_folder = "C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/augmented/"
-for file in os.listdir(augmented_output_folder):
-    image_path = os.path.join(augmented_output_folder, file)
-    img = cv2.imread(image_path)
-    if img is None:
-        raise Exception(f"Failed to read image: {image_path}")
+print("Total augmented images created:", total_augmented)
+augmented_images = np.array(augmented_images)
+augmented_labels = np.array(augmented_labels)
 
-    augmented_img = augment_image(img, (224, 224))
-    gray = cv2.cvtColor(augmented_img, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray, 100, 200)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    dilated = cv2.dilate(edges, kernel)
-    contours, hierarchy = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    longest_contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
-    is_closed = False
-    total = []
-    rectangles = []
-    if len(longest_contours) >= 2:
-        for contour in longest_contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            rectangles.append((x, y, w, h))
+# Combine original and augmented datasets
+all_images = np.concatenate([images, augmented_images])
+all_labels = np.concatenate([labels, augmented_labels])
 
-        if rectangles:
-            x1, y1, w1, h1 = rectangles[0]
-            x2, y2, w2, h2 = rectangles[1]
+# Training configurations
+epochs = [15]  # Example values
+batches = [32]  # Example values
+val_splits = [0.1, 0.2, 0.3]  # Example values
 
-        x = min(x1, x2)
-        y = min(y1, y2)
-        w = max(x1 + w1, x2 + w2) - x
-        h = max(y1 + h1, y2 + h2) - y
-
-        labels.append(np.array([x, y, w, h]))
-    elif len(longest_contours) == 1:
-        for contour in longest_contours:
-            x, y, w, h = cv2.boundingRect(contour)
-            labels.append(np.array([x, y, w, h]))
-    else:
-        labels.append(np.array([-1, -1, -1, -1]))
-
-    images.append(gray)
-
-images = np.array(images)
-images = np.reshape(images, (images.shape[0], images.shape[1], images.shape[2], 1))
-labels = np.array(labels)
-tf.print("Number of images loaded:", len(images))
-tf.print("Number of labels loaded:", len(labels))
-# Ensure that the number of samples in images and labels match
-assert images.shape[0] == labels.shape[0], "Number of samples in images and labels must match"
-
-
-####################
-
-# Define options
-batch_sizes = [8,16,32]
-epochs = [5,10,15]
-val_splits = [0.1,0.2,0.3]
-
-# Set up TensorBoard log directory
-log_dir = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
-
-
-# Loop through all combinations
-for batch_size, epoch, val_split in itertools.product(batch_sizes, epochs, val_splits):
-    test = f"{epoch}e{batch_size}b{int(val_split * 10)}v"
-    print(f"Testing with batch={batch_size}, epoch={epoch}, val_split={val_split}")
-
-    # Create TensorBoard callback
-    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=log_dir)
-
-    # Train the model with TensorBoard callback
-    makemodel(images, labels, epoch, batch_size, test, val_split, tensorboard_callback)
-
-# Change directory to /logs
-logs_dir = "logs/"
-os.chdir(logs_dir)
-
-# Run the command: tensorboard --logdir=logs/
-command = "tensorboard --logdir=logs/"
-subprocess.run(command, shell=True)
+# Train the model using makemodel
+for epoch, batch, val_split in itertools.product(epochs, batches, val_splits):
+    test_name = f"{epoch}e_{batch}b_{int(val_split * 10)}v"
+    print(f"Training: {test_name}")
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=f"logs/{test_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+    makemodel(all_images, all_labels, epoch, batch, test_name, val_split, tensorboard_callback)
