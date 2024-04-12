@@ -1,45 +1,37 @@
-import tensorflow as tf
 import cv2
 import numpy as np
 import keras
-from time import sleep
+import os
 
 # Load the saved model
-model = keras.models.load_model('5e32b1v.h5')
+model = keras.models.load_model('5e_16b_20v.h5')
 
-
-# Define the function to predict bounding boxes
-def predict_bounding_boxes(image_path):
-    # Read the image
+def predict_bounding_boxes(image_path, output_folder):
     image = cv2.imread(image_path)
+    if image is None:
+        print(f"Failed to load image at {image_path}")
+        return
 
-    # Resize the image
-    resized = cv2.resize(image, (576, 432))
-    # Convert to grayscale
+    resized = cv2.resize(image, (224, 224))
     gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+    reshaped = np.reshape(gray, (1, 224, 224, 1))  # Reshape the resized image
 
-    # Reshape
-    reshaped = np.reshape(gray, (1, 576, 432, 1))
-
-    # Predict the bounding box using the model
     prediction = model.predict(reshaped)
+    x, y, w, h = map(int, prediction[0])
 
-    # Extract the coordinates from the prediction
-    x = int(prediction[0][0])
-    y = int(prediction[0][1])
-    w = int(prediction[0][2])
-    h = int(prediction[0][3])
-    print(x, y, w, h)
+    cv2.rectangle(resized, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-    # Draw the bounding box on the image
-    cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    # Create output folder if it doesn't exist
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
-    # Show the image with the bounding box
-    cv2.imshow("Image", image)
-    cv2.waitKey(10)
+    # Save the image with bounding box to the specified folder
+    output_image_path = os.path.join(output_folder, os.path.basename(image_path))
+    cv2.imwrite(output_image_path, resized)
 
-for i in range(1, 1769):
-    image_path = "resized/photo_{}.jpg".format(i)  # Adjust the image path to point to the "resized" directory
-    predict_bounding_boxes(image_path)
-    image_path = "augmented/photo_{}_0.jpg".format(i)  # Adjust the image path to point to the "resized" directory
-    predict_bounding_boxes(image_path)
+# Set the output folder
+output_folder = 'maintestimages'
+
+for i in range(1, 1730):
+    image_path = f"resized/photo_{i}.jpg"
+    predict_bounding_boxes(image_path, output_folder)

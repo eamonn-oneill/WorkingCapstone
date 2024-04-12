@@ -4,7 +4,7 @@ import keras
 from djitellopy import Tello
 
 # Load the saved model
-model = keras.models.load_model('5e_16b_20v.h5')
+model = keras.models.load_model('5e_16b_2v.h5')
 
 def process_frame(frame):
     resized = cv2.resize(frame, (224, 224))  # Resize the image to match the model's expected input

@@ -3,8 +3,21 @@ import numpy as np
 import keras
 import os
 
-# Load the saved model
-model = keras.models.load_model('5e_16b_20v.h5')
+# Assuming the model is saved in a folder named "Main"
+model_dir = "Main"
+
+# Check if the model directory exists
+if not os.path.exists(model_dir):
+    raise FileNotFoundError(f"Model directory '{model_dir}' not found.")
+
+# Define the filename of the model
+model_filename = "5e_16b_2v.h5"
+
+# Construct the full path to the model
+model_path = os.path.join(model_dir, model_filename)
+
+# Load the model
+model = keras.models.load_model(model_path)
 
 def predict_bounding_boxes(image_path, output_folder):
     image = cv2.imread(image_path)

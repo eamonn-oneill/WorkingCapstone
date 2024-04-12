@@ -28,7 +28,7 @@ def post_process_mask(predicted_mask):
         closing = largest_mask * 255  # Make the largest component white in the mask
     return closing
 
-# Function to load the model
+# Function to load the UNet model
 def load_unet_model(model_path):
     return load_model(model_path)
 
@@ -41,7 +41,15 @@ def predict_mask(model, image):
 # Main function to load images and test the model
 def main():
     configure_gpu()
-    model_path = 'path_segmentation_model_epochs_5_batch_16_val_split_0.2.keras'  # Adjust this path as necessary
+    model_dir = "Unet"
+
+    # Assuming the UNet model is saved with the name 'path_segmentation_model_epochs_5_batch_16_val_split_0.2.keras'
+    model_filename = "path_segmentation_model_epochs_5_batch_16_val_split_0.2.keras"
+
+    # Construct the full path to the UNet model
+    model_path = os.path.join(model_dir, model_filename)
+
+    # Load the UNet model
     model = load_unet_model(model_path)
 
     test_folder = 'C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized'
