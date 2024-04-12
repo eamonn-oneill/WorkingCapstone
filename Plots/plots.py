@@ -27,15 +27,15 @@ for file_name in file_names:
         # Plot the validation accuracy curve for each batch size on the second subplot
         ax2.plot(epoch, loss, label=f'Batch size {batch_size}')
 
-ax1.set_xlabel('Epoch')
-ax1.set_ylabel('Training Accuracy')
-ax1.set_title(f'Training Accuracy Curves for {epoch_find} Epochs and {vset} validation split')
-ax1.legend()
+        ax1.set_xlabel('Epoch')
+        ax1.set_ylabel('Training Accuracy')
+        ax1.set_title(f'Training Accuracy Curves for {epoch_find} Epochs and {vset} validation split')
+        ax1.legend()
 
-ax2.set_xlabel('Epoch')
-ax2.set_ylabel('Loss')
-ax2.set_title(f'Loss Curves for {epoch_find} Epochs and {vset} validation split')
-ax2.legend()
+        ax2.set_xlabel('Epoch')
+        ax2.set_ylabel('Loss')
+        ax2.set_title(f'Loss Curves for {epoch_find} Epochs and {vset} validation split')
+        ax2.legend()
 
-plt.tight_layout() # adjust the spacing between subplots to prevent overlap
-plt.savefig(f'{epoch_find}e_{vset}v.jpg', bbox_inches='tight')
+        plt.tight_layout() # adjust the spacing between subplots to prevent overlap
+        plt.savefig(f'{epoch_find}e_{vset}v.jpg', bbox_inches='tight')
