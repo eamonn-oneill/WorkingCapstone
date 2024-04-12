@@ -9,25 +9,22 @@ def configure_gpu():
     gpus = tf.config.experimental.list_physical_devices('GPU')
     if gpus:
         try:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
+            tf.config.experimental.set_memory_growth(gpus[0], True)
         except RuntimeError as e:
             print("RuntimeError in setting up GPU:", e)
 
 # Function to post-process the predicted mask
 def post_process_mask(predicted_mask):
-    median_filtered = cv2.medianBlur(predicted_mask, 5)  # You might adjust the kernel size
-    _, binary_mask = cv2.threshold(median_filtered, 127, 255, cv2.THRESH_BINARY)  # Threshold adjusted for uint8 image
-
+    median_filtered = cv2.medianBlur(predicted_mask, 5)
+    _, binary_mask = cv2.threshold(median_filtered, 127, 255, cv2.THRESH_BINARY)
     kernel = np.ones((5, 5), np.uint8)
     opening = cv2.morphologyEx(binary_mask, cv2.MORPH_OPEN, kernel)
     closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
-
     num_labels, labels_im = cv2.connectedComponents(closing)
     if num_labels > 1:
-        component_areas = [(labels_im == i).sum() for i in range(1, num_labels)]
-        largest_component = 1 + np.argmax(component_areas)
-        largest_mask = np.uint8(labels_im == largest_component)
+        component_areas = [np.sum(labels_im == i) for i in range(1, num_labels)]
+        largest_component = np.argmax(component_areas) + 1  # +1 as index 0 is the background
+        largest_mask = (labels_im == largest_component).astype(np.uint8)
         closing = largest_mask * 255  # Make the largest component white in the mask
     return closing
 
@@ -44,18 +41,17 @@ def predict_mask(model, image):
 # Main function to load images and test the model
 def main():
     configure_gpu()
-    model_path = 'path_segmentation_model_epochs_5_batch_16_val_split_0.2.keras'  # Replace with your model path
+    model_path = 'path_segmentation_model_epochs_5_batch_16_val_split_0.2.keras'  # Adjust this path as necessary
     model = load_unet_model(model_path)
 
-    test_folder = 'C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized'  # Replace with your test folder path
+    test_folder = 'C:/Users/aa/Documents/code/NewCapstoneForGit/WorkingCapstone/resized'
     test_images = [f for f in os.listdir(test_folder) if f.endswith('.jpg')]
 
-    # Create folders if they don't exist
-    output_folders = ['original_images', 'ground_truth_masks', 'predicted_masks']
+    # Create output folders if they don't exist
+    output_folders = ['original_images', 'ground_truth_masks', 'predicted_masks', 'processed_masks']
     for folder in output_folders:
         folder_path = os.path.join(test_folder, folder)
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        os.makedirs(folder_path, exist_ok=True)
 
     for i, filename in enumerate(test_images):
         image_path = os.path.join(test_folder, filename)
@@ -64,17 +60,23 @@ def main():
             print(f"Failed to load image: {image_path}")
             continue
 
-        image = cv2.resize(image, (224, 224))
-        predicted_mask = predict_mask(model, image)
-        predicted_mask = (predicted_mask * 255).astype(np.uint8)  # Convert to uint8 image
+        image_resized = cv2.resize(image, (224, 224))  # Ensure the input image size matches the model expectation
+        predicted_mask = predict_mask(model, image_resized)
+        predicted_mask = (predicted_mask * 255).astype(np.uint8)
         processed_mask = post_process_mask(predicted_mask)
 
-        # Save the processed mask
-        cv2.imwrite(os.path.join(test_folder, output_folders[2], f'processed_mask_{i}.jpg'), processed_mask)
+        # Save the results
+        cv2.imwrite(os.path.join(test_folder, output_folders[0], f'original_{i}.jpg'), image)
+        cv2.imwrite(os.path.join(test_folder, output_folders[2], f'predicted_mask_{i}.jpg'), predicted_mask)
+        cv2.imwrite(os.path.join(test_folder, output_folders[3], f'processed_mask_{i}.jpg'), processed_mask)
 
         # Optionally visualize the results
+        cv2.imshow('Original Image', image)
+        cv2.imshow('Predicted Mask', predicted_mask)
         cv2.imshow('Processed Mask', processed_mask)
-        cv2.waitKey(1000)  # Wait 1000 ms between images
+        if cv2.waitKey(1000) & 0xFF == ord('q'):  # Press 'q' to quit the display between images
+            break
+
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
