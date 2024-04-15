@@ -33,6 +33,10 @@ def predict_bounding_boxes(image_path, output_folder):
 
     cv2.rectangle(resized, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
+    # Display the labeled image
+    cv2.imshow("Labeled Image", resized)
+    cv2.waitKey(200)  # Wait indefinitely for a key press
+
     # Create output folder if it doesn't exist
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -44,6 +48,6 @@ def predict_bounding_boxes(image_path, output_folder):
 # Set the output folder
 output_folder = 'vgg16testimages'
 
-for i in range(1, 1730):
+for i in range(1630, 1730):
     image_path = f"resized/photo_{i}.jpg"
     predict_bounding_boxes(image_path, output_folder)

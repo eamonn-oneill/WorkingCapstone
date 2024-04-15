@@ -79,9 +79,9 @@ all_images = np.concatenate([images, augmented_images])
 all_masks = np.concatenate([masks, augmented_masks])
 
 ## Define the combinations of epochs, batch sizes, and validation splits
-epochs_list = [5] # 5 10 15
-batch_sizes = [8] # 8 16 32
-val_splits = [0.2] # 0.1 0.2 0.3
+epochs_list = [5] # 5 10 15 (do 10160.1/0.2) do 158/160.2/0.3
+batch_sizes = [16] # 8 16 (32 is too much)
+val_splits = [0.3] # 0.1 0.2 0.3
 
 # Iterate through all combinations
 for epochs, batch_size, val_split in product(epochs_list, batch_sizes, val_splits):

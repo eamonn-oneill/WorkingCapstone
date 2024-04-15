@@ -1,7 +1,6 @@
 from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, Concatenate, Dropout
 from keras.models import Model
-
-# Define the U-Net model with dropout for regularization
+from keras.utils.vis_utils import plot_model# Define the U-Net model with dropout for regularization
 def unet_model(input_size=(224, 224, 1)):
     inputs = Input(input_size)
     c1 = Conv2D(16, (3, 3), activation='relu', padding='same')(inputs)
@@ -22,4 +21,5 @@ def unet_model(input_size=(224, 224, 1)):
 
     model = Model(inputs=inputs, outputs=outputs)
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    plot_model(model, to_file='model_plot_UNET.png', show_shapes=True, show_layer_names=True)
     return model

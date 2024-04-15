@@ -5,6 +5,7 @@ import itertools
 from datetime import datetime
 import tensorflow as tf
 from keras.preprocessing.image import ImageDataGenerator
+from keras.utils.vis_utils import plot_model
 from newtrain import makemodel
 
 def configure_gpu():
@@ -90,3 +91,4 @@ for epoch, batch, val_split in itertools.product(epochs, batches, val_splits):
     test_name = f"{epoch}e_{batch}b_{int(val_split * 10)}v"
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=f"logs/{test_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}")
     makemodel(all_images, all_labels, epoch, batch, test_name, val_split, tensorboard_callback)
+

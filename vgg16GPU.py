@@ -10,7 +10,7 @@ from keras.layers import Dense, Flatten, Dropout, BatchNormalization
 from keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint
 from keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import precision_score, recall_score, f1_score
-
+from keras.utils.vis_utils import plot_model
 # Check available physical GPUs and memory growth
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
@@ -52,6 +52,7 @@ def train_model(images, labels, epochs, batches, val_splits):
         history = model.fit(images, labels, epochs=epoch, batch_size=batch, validation_split=val_split,
                             callbacks=[early_stop, model_checkpoint, history_logger])
         model.save(filelog + '.keras')
+        plot_model(model, to_file='model_plot_Vgg16GPU.png', show_shapes=True, show_layer_names=True)
         print("Finished test: " + filelog)
         plot_training_history(history, filelog)
         # Clear GPU memory

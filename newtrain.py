@@ -4,7 +4,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Flatten, Dropout, Conv2D, MaxPooling2D, BatchNormalization, InputLayer
 from keras.callbacks import EarlyStopping, CSVLogger, TensorBoard
 from keras.optimizers import Adam
-
+from keras.utils.vis_utils import plot_model
 def makemodel(images, labels, epoch, batch, filelog, val_split, tensorboard_callback=None):
     print("\n")
     print("Starting test: " + filelog)
@@ -39,5 +39,6 @@ def makemodel(images, labels, epoch, batch, filelog, val_split, tensorboard_call
               validation_split=val_split, callbacks=callbacks)
 
     model.save(filelog + '.h5')
+    plot_model(model, to_file='model_plot_mainGPU.png', show_shapes=True, show_layer_names=True)
     print("Finished test: " + filelog)
     tf.keras.backend.clear_session()

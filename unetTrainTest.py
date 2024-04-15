@@ -61,6 +61,10 @@ def main():
         folder_path = os.path.join(test_folder, folder)
         os.makedirs(folder_path, exist_ok=True)
 
+    # Limit to the last 100 images
+    start_index = max(len(test_images) - 100, 0)
+    test_images = test_images[start_index:]
+
     for i, filename in enumerate(test_images):
         image_path = os.path.join(test_folder, filename)
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -73,15 +77,14 @@ def main():
         predicted_mask = (predicted_mask * 255).astype(np.uint8)
         processed_mask = post_process_mask(predicted_mask)
 
-        # Save the results
-        cv2.imwrite(os.path.join(test_folder, output_folders[0], f'original_{i}.jpg'), image)
-        cv2.imwrite(os.path.join(test_folder, output_folders[2], f'predicted_mask_{i}.jpg'), predicted_mask)
-        cv2.imwrite(os.path.join(test_folder, output_folders[3], f'processed_mask_{i}.jpg'), processed_mask)
+        # Concatenate the images horizontally
+        concatenated_image = np.hstack((image, predicted_mask, processed_mask))
+
+        # Save the concatenated image
+        cv2.imwrite(os.path.join(test_folder, output_folders[0], f'concatenated_{i}.jpg'), concatenated_image)
 
         # Optionally visualize the results
-        cv2.imshow('Original Image', image)
-        cv2.imshow('Predicted Mask', predicted_mask)
-        cv2.imshow('Processed Mask', processed_mask)
+        cv2.imshow('Concatenated Image', concatenated_image)
         if cv2.waitKey(1000) & 0xFF == ord('q'):  # Press 'q' to quit the display between images
             break
 
